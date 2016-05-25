@@ -29,6 +29,9 @@
 #include <boost/algorithm/string/trim_all.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
+#include <climits>
+#include <cstdlib>
+#include <ctime>
 #include <fstream>
 
 namespace vizdoom {
@@ -42,7 +45,9 @@ namespace vizdoom {
         this->summaryReward = 0;
         this->lastMapTic = 0;
         this->nextStateNumber = 1;
+        this->seed = (unsigned int)(time(NULL) % UINT_MAX) ;
         this->mode = PLAYER;
+
 
         this->doomController = new DoomController();
     }
@@ -114,7 +119,9 @@ namespace vizdoom {
 
         if(!this->isRunning()) throw ViZDoomIsNotRunningException();
 
+        this->doomController->setRngSeed((unsigned int)(rand() % UINT_MAX));
         this->doomController->restartMap();
+        this->doomController->clearRngSeed();
 
         this->lastMapTic = 0;
         this->nextStateNumber = 1;
@@ -325,11 +332,12 @@ namespace vizdoom {
     }
     void DoomGame::setDoomConfigPath(std::string path) { this->doomController->setConfigPath(path); }
 
-    unsigned int DoomGame::getSeed(){
-        if(this->doomController->isUseStaticSeed()) return this->doomController->getStaticSeed();
-        else return this->doomController->getSeed();
+    unsigned int DoomGame::getSeed(){ return this->seed; }
+
+    void DoomGame::setSeed(unsigned int seed){
+        this->seed = seed;
+        srand(this->seed);
     }
-    void DoomGame::setSeed(unsigned int seed){ this->doomController->setStaticSeed(seed); }
 
     unsigned int DoomGame::getEpisodeStartTime(){ return this->doomController->getMapStartTime(); }
     void DoomGame::setEpisodeStartTime(unsigned int tics){
@@ -757,8 +765,8 @@ namespace vizdoom {
             if(key == "available_buttons" || key == "availablebuttons"){
                 std::vector<std::string> str_buttons;
                 int start_line = line_number;
-                bool success = DoomGame::ParseListProperty(line_number, val, file, str_buttons );
-                if(success){
+                bool parse_success = DoomGame::ParseListProperty(line_number, val, file, str_buttons );
+                if(parse_success){
                     unsigned int i = 0;
                     try{
                         std::vector<Button> buttons;
@@ -774,7 +782,7 @@ namespace vizdoom {
                     }
                     catch(std::exception){
                         std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Unsupported value in lines "<<start_line<<"-"<<line_number<<": "<<str_buttons[i]<<". Lines ignored.\n";
-
+                        success = false;
                     }
                 }
                 else{
@@ -788,8 +796,8 @@ namespace vizdoom {
             if(key == "available_game_variables" || key == "availablegamevariables"){
                 std::vector<std::string> str_variables;
                 int start_line = line_number;
-                bool success = DoomGame::ParseListProperty(line_number, val, file, str_variables );
-                if(success){
+                bool parse_success = DoomGame::ParseListProperty(line_number, val, file, str_variables );
+                if(parse_success){
                     unsigned int i = 0;
                     try{
                         std::vector<GameVariable> variables;
@@ -805,7 +813,7 @@ namespace vizdoom {
                     }
                     catch(std::exception){
                         std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Unsupported value in lines "<<start_line<<"-"<<line_number<<": "<<str_variables[i]<<". Lines ignored.\n";
-
+                        success = false;
                     }
                 }
                 else{
@@ -943,8 +951,9 @@ namespace vizdoom {
             }
             catch( std::exception ){
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Boolean value expected insted of: "<<raw_val<<" in line #"<<line_number<<". Line ignored.\n";
+                success = false;
                 continue;
-                success = false;            
+                            
             }
 
         /* Parse enum properties */
