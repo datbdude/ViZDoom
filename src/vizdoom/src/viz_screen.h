@@ -20,42 +20,36 @@
  THE SOFTWARE.
 */
 
-#ifndef __VIZDOOM_GAME_H__
-#define __VIZDOOM_GAME_H__
+#ifndef __VIZ_SCREEN_H__
+#define __VIZ_SCREEN_H__
 
-#include <string.h>
+#include <stddef.h>
 
-#include "dobject.h"
-#include "dobjtype.h"
-#include "doomtype.h"
-#include "name.h"
-#include "d_player.h"
-//#include "namedef.h"
-//#include "sc_man.h"
-//#include "sc_man_tokens.h"
+extern unsigned int vizScreenWidth;
+extern unsigned int vizScreenHeight;
+extern size_t vizScreenPitch;
+extern size_t vizScreenSize;
 
-int ViZDoom_CheckItem(FName name);
+enum VIZScreenFormat {
+    VIZ_SCREEN_CRCGCB           = 0,
+    VIZ_SCREEN_CRCGCBDB         = 1,
+    VIZ_SCREEN_RGB24            = 2,
+    VIZ_SCREEN_RGBA32           = 3,
+    VIZ_SCREEN_ARGB32           = 4,
+    VIZ_SCREEN_CBCGCR           = 5,
+    VIZ_SCREEN_CBCGCRDB         = 6,
+    VIZ_SCREEN_BGR24            = 7,
+    VIZ_SCREEN_BGRA32           = 8,
+    VIZ_SCREEN_ABGR32           = 9,
+    VIZ_SCREEN_GRAY8            = 10,
+    VIZ_SCREEN_DEPTH_BUFFER8    = 11,
+    VIZ_SCREEN_DOOM_256_COLORS8 = 12
+};
 
-int ViZDoom_CheckItem(PClass *type);
+void VIZ_ScreenInit();
 
-const char* ViZDoom_CheckItemType(PClass *type);
+void VIZ_ScreenUpdate();
 
-bool ViZDoom_CheckSelectedWeaponState();
-
-int ViZDoom_CheckSelectedWeapon();
-
-int ViZDoom_CheckWeaponAmmo(AWeapon* weapon);
-
-int ViZDoom_CheckSelectedWeaponAmmo();
-
-int ViZDoom_CheckSlotAmmo(int slot);
-
-int ViZDoom_CheckSlotWeapons(int slot);
-
-void ViZDoom_GameVarsInit();
-
-void ViZDoom_GameVarsTic();
-
-void ViZDoom_GameVarsClose();
+void VIZ_ScreenClose();
 
 #endif

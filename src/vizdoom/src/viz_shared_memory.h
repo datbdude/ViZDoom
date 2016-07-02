@@ -20,39 +20,23 @@
  THE SOFTWARE.
 */
 
-#include "vizdoom_shared_memory.h"
-#include "vizdoom_message_queue.h"
-#include "vizdoom_defines.h"
+#ifndef __VIZ_SHARED_MEMORY_H__
+#define __VIZ_SHARED_MEMORY_H__
 
-#include "doomstat.h"
-#include "v_video.h"
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
 
-bip::shared_memory_object vizdoomSM;
-size_t vizdoomSMSize;
-char * vizdoomSMName;
+namespace bip = boost::interprocess;
 
-void ViZDoom_SMInit(const char * id){
+extern bip::shared_memory_object vizSM;
+extern size_t vizSMSize;
+extern size_t vizSMGameStateAddress;
+extern size_t vizSMInputAddress;
+extern size_t vizSMScreenAddress;
 
-	vizdoomSMName = new char[strlen(VIZDOOM_SM_NAME_BASE) + strlen(id)];
-	strcpy(vizdoomSMName, VIZDOOM_SM_NAME_BASE);
-	strcat(vizdoomSMName, id);
+#define VIZ_SM_NAME_BASE "ViZDoomSM"
 
-    try {
-        bip::shared_memory_object::remove(vizdoomSMName);
-        vizdoomSM = bip::shared_memory_object(bip::open_or_create, vizdoomSMName, bip::read_write);
+void VIZ_SMInit(const char * id);
+void VIZ_SMClose();
 
-        vizdoomSMSize = sizeof(ViZDoomInputStruct) + sizeof(ViZDoomGameVarsStruct) +
-                      (sizeof(BYTE) * screen->GetWidth() * screen->GetHeight() * 4);
-        vizdoomSM.truncate(vizdoomSMSize);
-    }
-    catch(bip::interprocess_exception &ex){
-        printf("ViZDoom_SMInit: Error creating shared memory");
-        ViZDoom_MQSend(VIZDOOM_MSG_CODE_DOOM_ERROR);
-        exit(1);
-    }
-}
-
-void ViZDoom_SMClose(){
-    bip::shared_memory_object::remove(vizdoomSMName);
-	delete[] vizdoomSMName;
-}
+#endif

@@ -27,6 +27,7 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/trim_all.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 #include <climits>
@@ -35,6 +36,9 @@
 #include <fstream>
 
 namespace vizdoom {
+
+    namespace b         = boost;
+    namespace bfs       = boost::filesystem;
 
     DoomGame::DoomGame() {
         this->running = false;
@@ -45,9 +49,7 @@ namespace vizdoom {
         this->summaryReward = 0;
         this->lastMapTic = 0;
         this->nextStateNumber = 1;
-        this->seed = (unsigned int)(time(NULL) % UINT_MAX) ;
         this->mode = PLAYER;
-
 
         this->doomController = new DoomController();
     }
@@ -58,7 +60,10 @@ namespace vizdoom {
     }
 
     bool DoomGame::init() {
-        if (!this->running) {
+        if (!this->isRunning()) {
+
+            std::string cfgOverrideFile = "_vizdoom.cfg";
+            if(bfs::exists(cfgOverrideFile) && !bfs::is_directory(cfgOverrideFile)) loadConfig(cfgOverrideFile);
 
             this->lastAction.resize(this->availableButtons.size());
 
@@ -102,7 +107,7 @@ namespace vizdoom {
     }
 
     void DoomGame::close() {
-        if (this->running) {
+        if (this->isRunning()) {
             this->doomController->close();
             this->state.gameVariables.clear();
             this->lastAction.clear();
@@ -116,12 +121,29 @@ namespace vizdoom {
     }
 
     void DoomGame::newEpisode() {
+        this->newEpisode("");
+    }
+
+    void DoomGame::newEpisode(std::string path){
 
         if(!this->isRunning()) throw ViZDoomIsNotRunningException();
 
-        this->doomController->setRngSeed((unsigned int)(rand() % UINT_MAX));
-        this->doomController->restartMap();
-        this->doomController->clearRngSeed();
+        if(path.length()) this->doomController->setMap(this->doomController->getMap(), path);
+        else this->doomController->restartMap();
+
+        this->lastMapTic = 0;
+        this->nextStateNumber = 1;
+
+        this->updateState();
+
+        //this->lastMapReward = 0;
+        this->lastReward = 0;
+        this->summaryReward = 0;
+    }
+
+    void DoomGame::replayEpisode(std::string path){
+
+        this->doomController->playDemo(path);
 
         this->lastMapTic = 0;
         this->nextStateNumber = 1;
@@ -223,13 +245,11 @@ namespace vizdoom {
 
     bool DoomGame::isNewEpisode() {
         if(!this->isRunning()) throw ViZDoomIsNotRunningException();
-
         return this->doomController->isMapFirstTic();
     }
 
     bool DoomGame::isEpisodeFinished() {
         if(!this->isRunning()) throw ViZDoomIsNotRunningException();
-
         return !this->doomController->isTicPossible();
     }
 
@@ -247,14 +267,14 @@ namespace vizdoom {
     }
 
     void DoomGame::addAvailableButton(Button button) {
-        if (!this->running && std::find(this->availableButtons.begin(), this->availableButtons.end(), button) ==
+        if (!this->isRunning() && std::find(this->availableButtons.begin(), this->availableButtons.end(), button) ==
             this->availableButtons.end()) {
             this->availableButtons.push_back(button);
         }
     }
 
-    void DoomGame::addAvailableButton(Button button, int maxValue) {
-        if (!this->running && std::find(this->availableButtons.begin(), this->availableButtons.end(), button) ==
+    void DoomGame::addAvailableButton(Button button, unsigned int maxValue) {
+        if (!this->isRunning() && std::find(this->availableButtons.begin(), this->availableButtons.end(), button) ==
                               this->availableButtons.end()) {
             this->availableButtons.push_back(button);
             this->doomController->setButtonMaxValue(button, maxValue);
@@ -262,14 +282,14 @@ namespace vizdoom {
     }
 
     void DoomGame::clearAvailableButtons(){
-        if(!this->running) this->availableButtons.clear();
+        if(!this->isRunning()) this->availableButtons.clear();
     }
 
     int DoomGame::getAvailableButtonsSize() {
         return this->availableButtons.size();
     }
 
-    void DoomGame::setButtonMaxValue(Button button, int maxValue){
+    void DoomGame::setButtonMaxValue(Button button, unsigned int maxValue){
         this->doomController->setButtonMaxValue(button, maxValue);
     }
 
@@ -278,14 +298,14 @@ namespace vizdoom {
     }
 
     void DoomGame::addAvailableGameVariable(GameVariable var) {
-        if (!this->running && std::find(this->availableGameVariables.begin(), this->availableGameVariables.end(), var) ==
+        if (!this->isRunning() && std::find(this->availableGameVariables.begin(), this->availableGameVariables.end(), var) ==
             this->availableGameVariables.end()) {
             this->availableGameVariables.push_back(var);
         }
     }
 
     void DoomGame::clearAvailableGameVariables() {
-        if(!this->running) this->availableGameVariables.clear();
+        if(!this->isRunning()) this->availableGameVariables.clear();
     }
 
     int DoomGame::getAvailableGameVariablesSize() {
@@ -315,7 +335,10 @@ namespace vizdoom {
     }
 
     Mode DoomGame::getMode(){ return this->mode; };
-    void DoomGame::setMode(Mode mode){ if (!this->running) this->mode = mode; }
+    void DoomGame::setMode(Mode mode){ if (!this->isRunning()) this->mode = mode; }
+
+    unsigned int DoomGame::getTicrate(){ return this->doomController->getTicrate(); }
+    void DoomGame::setTicrate(unsigned int ticrate){ this->doomController->setTicrate(ticrate); }
 
     int DoomGame::getGameVariable(GameVariable var){
         if(!this->isRunning()) throw ViZDoomIsNotRunningException();
@@ -327,27 +350,17 @@ namespace vizdoom {
     void DoomGame::setDoomGamePath(std::string path) { this->doomController->setIwadPath(path); }
     void DoomGame::setDoomScenarioPath(std::string path) { this->doomController->setFilePath(path); }
     void DoomGame::setDoomMap(std::string map) { this->doomController->setMap(map); }
-    void DoomGame::setDoomSkill(int skill) {
-        this->doomController->setSkill(skill); 
-    }
+    void DoomGame::setDoomSkill(int skill) { this->doomController->setSkill(skill); }
     void DoomGame::setDoomConfigPath(std::string path) { this->doomController->setConfigPath(path); }
 
-    unsigned int DoomGame::getSeed(){ return this->seed; }
-
-    void DoomGame::setSeed(unsigned int seed){
-        this->seed = seed;
-        srand(this->seed);
-    }
+    unsigned int DoomGame::getSeed(){ return this->doomController->getInstanceRngSeed(); }
+    void DoomGame::setSeed(unsigned int seed){ this->doomController->setInstanceRngSeed(seed); }
 
     unsigned int DoomGame::getEpisodeStartTime(){ return this->doomController->getMapStartTime(); }
-    void DoomGame::setEpisodeStartTime(unsigned int tics){
-        this->doomController->setMapStartTime(tics);
-    }
+    void DoomGame::setEpisodeStartTime(unsigned int tics){ this->doomController->setMapStartTime(tics); }
 
     unsigned int DoomGame::getEpisodeTimeout(){ return this->doomController->getMapTimeout(); }
-    void DoomGame::setEpisodeTimeout(unsigned int tics) {
-        this->doomController->setMapTimeout(tics);
-    }
+    void DoomGame::setEpisodeTimeout(unsigned int tics) { this->doomController->setMapTimeout(tics); }
 
     unsigned int DoomGame::getEpisodeTime(){ return this->doomController->getMapTic(); }
 
@@ -450,8 +463,8 @@ namespace vizdoom {
 
     unsigned int DoomGame::StringToUint(std::string str)
     {
-        unsigned int value = boost::lexical_cast<unsigned int>(str);
-        if(str[0] == '-') throw boost::bad_lexical_cast();
+        unsigned int value = b::lexical_cast<unsigned int>(str);
+        if(str[0] == '-') throw b::bad_lexical_cast();
         return value;
     }
 
@@ -478,7 +491,7 @@ namespace vizdoom {
         if(str == "res_512x320")    return RES_512X320;
         if(str == "res_512x384")    return RES_512X384;
 
-        if(str == "res_640x360")    return RES_640X400;
+        if(str == "res_640x360")    return RES_640X360;
         if(str == "res_640x400")    return RES_640X400;
         if(str == "res_640x480")    return RES_640X480;
 
@@ -647,9 +660,9 @@ namespace vizdoom {
         throw std::exception();
     }
 
-    typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
+    typedef b::tokenizer<b::char_separator<char> > tokenizer;
     bool DoomGame::ParseListProperty(int& line_number, std::string& value, std::ifstream& input, std::vector<std::string>& output){
-        using namespace boost::algorithm;
+        using namespace b::algorithm;
         int start_line = line_number;
     /* Find '{' */
         while(value.empty()){
@@ -678,12 +691,12 @@ namespace vizdoom {
         }
         if(value.empty() || value[value.size()-1] != '}') return false;
         
-    /* Fill the vector */
+        /* Fill the vector */
         value[value.size() -1] = ' ';
         trim_all(value);
         to_lower(value);
         
-        boost::char_separator<char> separator(" ");
+        b::char_separator<char> separator(" ");
         tokenizer tok(value, separator);
         for(tokenizer::iterator it = tok.begin(); it != tok.end(); ++it){
             output.push_back(*it);
@@ -695,34 +708,29 @@ namespace vizdoom {
         bool success = true;
         std::ifstream file(filename.c_str());
         
-        if(!file.good() )
-        {
+        if(!file.good() ) {
             throw FileDoesNotExistException(filename);
-            //std::cerr<<"WARNING! Loading config from: \""<<filename<<"\" failed. Something's wrong with the file. Check your spelling and permissions.\n";
-            return false;
         }
         std::string line;
         int line_number = 0;
 
-    /* Process every line. */
-        while(!file.eof())
-        {
+        /* Process every line. */
+        while(!file.eof()) {
             ++line_number;
-            using namespace boost::algorithm;
+            using namespace b::algorithm;
 
             std::getline(file, line);
 
-        /* Ignore empty and comment lines */
+            /* Ignore empty and comment lines */
             trim_all(line);
 
             if(line.empty() || line[0] == '#'){
                 continue;
             }
 
+            bool append = false; //it looks for +=
 
-        bool append = false; //it looks for +=
-
-        /* Check if '=' is there */
+            /* Check if '=' is there */
             size_t equals_sign_pos = line.find_first_of('=');
             size_t append_sign_pos = line.find("+=");
 
@@ -738,29 +746,27 @@ namespace vizdoom {
                 key = line.substr(0, equals_sign_pos);
                 val = line.substr(equals_sign_pos + 1);
             }
-            else
-            {
+            else {
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Syntax erorr in line #"<<line_number<<". Line ignored.\n";
                 success = false;
                 continue;
             }
 
-            
+
             raw_val = val;
             trim_all(key);
             trim_all(val);
             std::string original_val = val;
             to_lower(val);
             to_lower(key);
-            if(key.empty())
-            {
+            if(key.empty()) {
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Empty key in line #"<<line_number<<". Line ignored.\n";
                 success = false;
                 continue;
             }
 
 
-        /* Parse enum list properties */
+            /* Parse enum list properties */
 
             if(key == "available_buttons" || key == "availablebuttons"){
                 std::vector<std::string> str_buttons;
@@ -824,23 +830,24 @@ namespace vizdoom {
                 continue;
             }           
 
-        /* Parse game args which ae string but enables "+=" */
+            /* Parse game args which are string but enables "+=" */
             if(key == "game_args" || key == "game_args"){
-            	if(!append){
-            		this->clearGameArgs();
-            	}
+                if(!append){
+                    this->clearGameArgs();
+                }
                 this->addGameArgs(original_val);
                 continue;
             }
-        /* Check if "+=" was not used for non-list property */
+
+            /* Check if "+=" was not used for non-list property */
             if(append){
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". \"+=\" is not supported for non-list properties. Line #"<<line_number<<" ignored.\n";
                 success = false;
                 continue;
             }
 
-           	
-        /* Check if value is not empty */
+
+            /* Check if value is not empty */
             if(val.empty())
             {
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Empty value in line #"<<line_number<<". Line ignored.\n";
@@ -848,7 +855,7 @@ namespace vizdoom {
                 continue;
             }
         
-        /* Parse int properties */
+            /* Parse int properties */
             try{
                 if (key =="seed" || key == "seed"){
                     this->setSeed(StringToUint(val));
@@ -867,30 +874,30 @@ namespace vizdoom {
                     continue;
                 }
             }
-            catch(boost::bad_lexical_cast &){
+            catch(b::bad_lexical_cast &){
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Unsigned int value expected insted of: "<<raw_val<<" in line #"<<line_number<<". Line ignored.\n";
                 success = false;
                 continue;
             }
 
-        /* Parse float properties */
+            /* Parse float properties */
             try{
                 if (key =="living_reward" || key =="livingreward"){
-                    this->setLivingReward(boost::lexical_cast<double>(val));
+                    this->setLivingReward(b::lexical_cast<double>(val));
                     continue;
                 }
                 if (key == "deathpenalty" || key == "death_penalty"){
-                    this->setDeathPenalty(boost::lexical_cast<double>(val));
+                    this->setDeathPenalty(b::lexical_cast<double>(val));
                     continue;
                 }
             }
-            catch(boost::bad_lexical_cast &){
+            catch(b::bad_lexical_cast &){
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Float value expected insted of: "<<raw_val<<" in line #"<<line_number<<". Line ignored.\n";
                 success = false;
                 continue;
             }
                         
-        /* Parse string properties */
+            /* Parse string properties */
             if(key == "doom_map" || key == "doommap"){
                 this->setDoomMap(val);
                 continue;
@@ -912,8 +919,8 @@ namespace vizdoom {
                 continue;
             }
 
-    
-        /* Parse bool properties */
+
+            /* Parse bool properties */
             try{
                 if (key =="console_enabled" || key =="consoleenabled"){
                     this->setConsoleEnabled(StringToBool(val));
@@ -947,7 +954,6 @@ namespace vizdoom {
                     this->setWindowVisible(StringToBool(val));
                     continue;
                 }
-               
             }
             catch( std::exception ){
                 std::cerr<<"WARNING! Loading config from: \""<<filename<<"\". Boolean value expected insted of: "<<raw_val<<" in line #"<<line_number<<". Line ignored.\n";
@@ -956,7 +962,7 @@ namespace vizdoom {
                             
             }
 
-        /* Parse enum properties */
+            /* Parse enum properties */
 
             if(key =="mode")
             {
@@ -1000,9 +1006,9 @@ namespace vizdoom {
                         throw std::exception();
                     Button button = DoomGame::StringToButton(val.substr(0,space));
                     val = val.substr(space+1);
-                    unsigned int max_value = boost::lexical_cast<unsigned int>(val);
+                    unsigned int max_value = b::lexical_cast<unsigned int>(val);
                     if(val[0] == '-')
-                        throw boost::bad_lexical_cast();
+                        throw b::bad_lexical_cast();
                     this->setButtonMaxValue(button,max_value);
                     continue;
                 }

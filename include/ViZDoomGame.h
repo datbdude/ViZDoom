@@ -65,9 +65,22 @@ namespace vizdoom {
         void newEpisode();
 
         /*
+         * Initializes a new episode and recording it to given file.
+         */
+        void newEpisode(std::string path);
+
+        void replayEpisode(std::string path);
+
+        /*
          * Checks if the ViZDoom game is running.
          */
         bool isRunning();
+
+        /*
+         * Processes a specified number of tics, updates state and calculates a new reward.
+         * Short for advanceAction(tics, true, false).
+         */
+        void advanceAction(unsigned int tics);
 
         /*
          * Sets the player's action for the next tics.
@@ -83,12 +96,6 @@ namespace vizdoom {
          * will be rendered after last processed tic. To get the new frame use getGameScreen.
          */
         void advanceAction(unsigned int tics, bool updateState, bool renderOnly);
-
-        /*
-         * Processes a specified number of tics, updates state and calculates a new reward.
-         * Short for advanceAction(tics, true, false).
-         */
-        void advanceAction(unsigned int tics);
 
         /*
          * Processes one tic, updates the state and calculates a new reward.
@@ -167,7 +174,7 @@ namespace vizdoom {
          * Makes the specified input type available and sets the maximum allowed (absolute) value for it.
          * If the button has already been added the maximum value is overridden.
          */
-        void addAvailableButton(Button button, int maxValue);
+        void addAvailableButton(Button button, unsigned int maxValue);
 
         /*
          * Clears all available buttons added so far.
@@ -186,7 +193,7 @@ namespace vizdoom {
          * Setting maximum value equal to 0 results in no constraint at all (infinity).
          * This method makes sense only for delta buttons.
          */
-        void setButtonMaxValue(Button button, int maxValue);
+        void setButtonMaxValue(Button button, unsigned int maxValue);
 
         /*
          * Returns the maximum allowed (absolute) value for the specified button.
@@ -288,19 +295,24 @@ namespace vizdoom {
         Mode getMode();
 
         /*
-         * Sets mode (e.g. PLAYER, SPECTATOR) in which the game will be started.
+         * Sets mode (PLAYER, SPECTATOR, ASYNC_PLAYER, ASYNC_SPECTATOR) in which the game will be started.
+         * Default value: PLAYER.
          */
         void setMode(Mode mode);
 
+        unsigned int getTicrate();
+
+        void setTicrate(unsigned int ticrate);
+
         /*
          * Sets path to ViZDoom engine executable.
-         * Default value: "./vizdoom"
+         * Default value: "vizdoom" / "vizdoom.exe"
          */
         void setViZDoomPath(std::string path);
 
         /*
          * Sets path to the Doom engine based game file (wad format).
-         * Default value: "./doom2.wad"
+         * Default value: "doom2.wad"
          */
         void setDoomGamePath(std::string path);
 
@@ -334,12 +346,12 @@ namespace vizdoom {
         void setDoomConfigPath(std::string path);
 
         /*
-         * Return ViZDoom's game seed.
+         * Return ViZDoom's seed.
          */
         unsigned int getSeed();
 
         /*
-         * Sets the seed of the ViZDoom's randomizing engine.
+         * Sets the seed of the ViZDoom's RNG that generates seeds (initial state) for episodes.
          */
         void setSeed(unsigned int seed);
 
@@ -484,7 +496,6 @@ namespace vizdoom {
 
         unsigned int nextStateNumber;
         unsigned int lastMapTic;
-        unsigned int seed;
 
         /* Rewards */
         /*------------------------------------------------------------------------------------------------------------*/

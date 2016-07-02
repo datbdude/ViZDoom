@@ -20,20 +20,24 @@
  THE SOFTWARE.
 */
 
-#ifndef __VIZDOOM_SCREEN_H__
-#define __VIZDOOM_SCREEN_H__
+#ifndef __VIZ_MAIN_H__
+#define __VIZ_MAIN_H__
 
-#include <stddef.h>
+extern bool vizNextTic;
+extern bool vizUpdate;
+extern unsigned int vizLastUpdate;
+extern int vizTime;
 
-extern unsigned int vizdoomScreenWidth;
-extern unsigned int vizdoomScreenHeight;
-extern size_t vizdoomScreenPitch;
-extern size_t vizdoomScreenSize;
+void VIZ_Init();
 
-void ViZDoom_ScreenInit();
+void VIZ_AsyncStartTic();
 
-void ViZDoom_ScreenUpdate();
+void VIZ_Tic();
 
-void ViZDoom_ScreenClose();
+void VIZ_Update();
+
+bool VIZ_IsPaused();
+
+void VIZ_Close();
 
 #endif

@@ -20,21 +20,17 @@
  THE SOFTWARE.
 */
 
-#ifndef __VIZDOOM_MAIN_H__
-#define __VIZDOOM_MAIN_H__
+#ifndef __VIZ_DEFINES_H__
+#define __VIZ_DEFINES_H__
 
-extern int vizdoom_time;
+#include <stdlib.h>
 
-void ViZDoom_Init();
+#define VIZ_VERSION 109
+#define VIZ_VERSION_STR "1.1.0pre"
 
-void ViZDoom_AsyncStartTic();
+#define VIZ_TIME ((unsigned int)level.starttime + (unsigned int)level.maptime)
+#define VIZ_PLAYER players[consoleplayer]
 
-void ViZDoom_Tic();
-
-void ViZDoom_Update();
-
-bool ViZDoom_IsPaused();
-
-void ViZDoom_Close();
+#define VIZ_DEBUG_PRINT if(*viz_debug) Printf
 
 #endif

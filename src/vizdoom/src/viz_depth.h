@@ -20,22 +20,22 @@
  THE SOFTWARE.
 */
 
-#ifndef __VIZDOOM_DEPTH_H__
-#define __VIZDOOM_DEPTH_H__
+#ifndef __VIZ_DEPTH_H__
+#define __VIZ_DEPTH_H__
 
 //UNCOMMENT TO ENABLE DEPTH BUFFER DEBUG WINDOW
-//#define VIZDOOM_DEPTH_TEST 1
+//#define VIZ_DEPTH_TEST 1
 
 //UNCOMMENT TO ENABLE COLOR-BASED DEPTH TEST
-//#define VIZDOOM_DEPTH_COLORS 1
+//#define VIZ_DEPTH_COLORS 1
 
 #include "basictypes.h"
 
-#ifdef VIZDOOM_DEPTH_TEST
+#ifdef VIZ_DEPTH_TEST
 #include <SDL_video.h>
 #endif
 
-class ViZDoomDepthBuffer{
+class VIZDepthBuffer{
 public:
     BYTE *getBuffer();
     BYTE *getBufferPoint(unsigned int x, unsigned int y);
@@ -49,8 +49,8 @@ public:
     void storeY(int y);
     int getX(void);
     int getY(void);
-    ViZDoomDepthBuffer(unsigned int width, unsigned int height);
-    ~ViZDoomDepthBuffer();
+    VIZDepthBuffer(unsigned int width, unsigned int height);
+    ~VIZDepthBuffer();
     unsigned int getBufferSize();
     unsigned int getBufferWidth();
     unsigned int getBufferHeight();
@@ -61,7 +61,7 @@ public:
     bool isLocked();
     void sizeUpdate();
     unsigned int helperBuffer[4];
-#ifdef VIZDOOM_DEPTH_TEST
+#ifdef VIZ_DEPTH_TEST
     void Update();
 #endif
 private:
@@ -75,12 +75,12 @@ private:
     int convSteps;
     int tX, tY;
     bool locked;
-#ifdef VIZDOOM_DEPTH_TEST
+#ifdef VIZ_DEPTH_TEST
     SDL_Window* window;
     SDL_Surface* surface;
     SDL_Color colors[256];
 #endif
 };
 
-extern ViZDoomDepthBuffer* depthMap;
+extern VIZDepthBuffer* depthMap;
 #endif

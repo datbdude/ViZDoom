@@ -28,9 +28,8 @@
 #include <boost/python.hpp>
 #include <vector>
 
-using namespace vizdoom;
 
-namespace bp = boost::python;
+using namespace vizdoom;
 
 /* C++ code to expose DoomGamePython via python */
 
@@ -39,16 +38,16 @@ PyObject* createExceptionClass(const char* name, PyObject* baseTypeObj = PyExc_E
     // Workaround for
     // "TypeError: No registered converter was able to produce a C++ rvalue of type std::string from this Python object of type str"
     // on GCC < 5
-    const char* cScopeName = bp::extract<const char*>(bp::scope().attr("__name__"));
+    const char* cScopeName = bpy::extract<const char*>(bpy::scope().attr("__name__"));
     std::string scopeName(cScopeName);
 
-    //std::string scopeName = bp::extract<std::string>(bp::scope().attr("__name__"));
+    //std::string scopeName = bpy::extract<std::string>(bpy::scope().attr("__name__"));
     std::string qualifiedName0 = scopeName + "." + name;
     char* qualifiedName1 = const_cast<char*>(qualifiedName0.c_str());
 
     PyObject* typeObj = PyErr_NewException(qualifiedName1, baseTypeObj, 0);
-    if(!typeObj) bp::throw_error_already_set();
-    bp::scope().attr(name) = bp::handle<>(bp::borrowed(typeObj));
+    if(!typeObj) bpy::throw_error_already_set();
+    bpy::scope().attr(name) = bpy::handle<>(bpy::borrowed(typeObj));
     return typeObj;
 }
 
@@ -59,58 +58,78 @@ void translate ## n (std::exception const &e){ PyErr_SetString( type ## n  , e.w
  * void translate(std::exception const &e) { PyErr_SetString(typeMyException, e.what()); }
  */
 
-EXCEPTION_TRANSLATE_TO_PYT(ViZDoomMismatchedVersionException)
-EXCEPTION_TRANSLATE_TO_PYT(ViZDoomUnexpectedExitException)
+EXCEPTION_TRANSLATE_TO_PYT(FileDoesNotExistException)
+EXCEPTION_TRANSLATE_TO_PYT(MessageQueueException)
+EXCEPTION_TRANSLATE_TO_PYT(SharedMemoryException)
 EXCEPTION_TRANSLATE_TO_PYT(ViZDoomIsNotRunningException)
 EXCEPTION_TRANSLATE_TO_PYT(ViZDoomErrorException)
-EXCEPTION_TRANSLATE_TO_PYT(SharedMemoryException)
-EXCEPTION_TRANSLATE_TO_PYT(MessageQueueException)
-EXCEPTION_TRANSLATE_TO_PYT(FileDoesNotExistException)
+EXCEPTION_TRANSLATE_TO_PYT(ViZDoomMismatchedVersionException)
+EXCEPTION_TRANSLATE_TO_PYT(ViZDoomSignalException)
+EXCEPTION_TRANSLATE_TO_PYT(ViZDoomUnexpectedExitException)
 
 
 /* DoomGamePython methods overloading */
 
+void (DoomGamePython::*newEpisode1)() = &DoomGamePython::newEpisode;
+void (DoomGamePython::*newEpisode2)(bpy::str const &) = &DoomGamePython::newEpisode;
+
 void (DoomGamePython::*addAvailableButton1)(Button) = &DoomGamePython::addAvailableButton;
-void (DoomGamePython::*addAvailableButton2)(Button, int) = &DoomGamePython::addAvailableButton;
+void (DoomGamePython::*addAvailableButton2)(Button, unsigned int) = &DoomGamePython::addAvailableButton;
 
 void (DoomGamePython::*advanceAction1)() = &DoomGamePython::advanceAction;
 void (DoomGamePython::*advanceAction2)(unsigned int) = &DoomGamePython::advanceAction;
 void (DoomGamePython::*advanceAction3)(unsigned int, bool, bool) = &DoomGamePython::advanceAction;
 
-double (DoomGamePython::*makeAction1)(bp::list const &) = &DoomGamePython::makeAction;
-double (DoomGamePython::*makeAction2)(bp::list const &, unsigned int) = &DoomGamePython::makeAction;
+double (DoomGamePython::*makeAction1)(bpy::list const &) = &DoomGamePython::makeAction;
+double (DoomGamePython::*makeAction2)(bpy::list const &, unsigned int) = &DoomGamePython::makeAction;
+
+#if PY_MAJOR_VERSION >= 3
+int
+#else
+void
+#endif
+init_numpy()
+{
+    bpy::numeric::array::set_module_and_type("numpy", "ndarray");
+    import_array();
+}
 
 BOOST_PYTHON_MODULE(vizdoom)
 {
     using namespace boost::python;
 
     Py_Initialize();
-    bp::numeric::array::set_module_and_type("numpy", "ndarray");
-    import_array();
-    
-    /* exceptions */
+    init_numpy();
 
-#define EXCEPTION_TO_PYT(n) type ## n = createExceptionClass(#n); \
-bp::register_exception_translator< n >(&translate ## n );
+    /* Exceptions */
+    /*------------------------------------------------------------------------------------------------------------*/
+
+    #define EXCEPTION_TO_PYT(n) type ## n = createExceptionClass(#n); \
+    bpy::register_exception_translator< n >(&translate ## n );
     /* typeMyException = createExceptionClass("myException");
-     * bp::register_exception_translator<myException>(&translate);
+     * bpy::register_exception_translator<myException>(&translate);
      */
 
-//#define EXCEPTION_TO_PYT(n, pytn) type ## n = createExceptionClass(#pytn); \
-//bp::register_exception_translator< n >(&translate ## n );
+    //#define EXCEPTION_TO_PYT(n, pytn) type ## n = createExceptionClass(#pytn); \
+    //bpy::register_exception_translator< n >(&translate ## n );
     /* typeMyException = createExceptionClass("myException");
-     * bp::register_exception_translator<myException>(&translate);
+     * bpy::register_exception_translator<myException>(&translate);
      */
-        
-    EXCEPTION_TO_PYT(ViZDoomMismatchedVersionException)
-    EXCEPTION_TO_PYT(ViZDoomUnexpectedExitException)
+
+    EXCEPTION_TO_PYT(FileDoesNotExistException)
+    EXCEPTION_TO_PYT(MessageQueueException)
+    EXCEPTION_TO_PYT(SharedMemoryException)
     EXCEPTION_TO_PYT(ViZDoomIsNotRunningException)
     EXCEPTION_TO_PYT(ViZDoomErrorException)
-    EXCEPTION_TO_PYT(SharedMemoryException)
-    EXCEPTION_TO_PYT(MessageQueueException)
-    EXCEPTION_TO_PYT(FileDoesNotExistException)
+    EXCEPTION_TO_PYT(ViZDoomMismatchedVersionException)
+    EXCEPTION_TO_PYT(ViZDoomSignalException)
+    EXCEPTION_TO_PYT(ViZDoomUnexpectedExitException)
 
-#define ENUM_VAL_2_PYT(v) .value( #v , v )
+
+    /* Enums */
+    /*------------------------------------------------------------------------------------------------------------*/
+
+    #define ENUM_VAL_2_PYT(v) .value( #v , v )
     /* .value("VALUE_IN_PYTHON", VALUE_IN_CPP) */
 
     enum_<Mode>("Mode")
@@ -290,7 +309,17 @@ bp::register_exception_translator< n >(&translate ## n );
         ENUM_VAL_2_PYT(USER27)
         ENUM_VAL_2_PYT(USER28)
         ENUM_VAL_2_PYT(USER29)
-        ENUM_VAL_2_PYT(USER30);
+        ENUM_VAL_2_PYT(USER30)
+        ENUM_VAL_2_PYT(PLAYER_NUMBER)
+        ENUM_VAL_2_PYT(PLAYER_COUNT)
+        ENUM_VAL_2_PYT(PLAYER1_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER2_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER3_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER4_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER5_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER6_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER7_FRAGCOUNT)
+        ENUM_VAL_2_PYT(PLAYER8_FRAGCOUNT);
 
     def("doom_tics_to_ms", DoomTicsToMs);
     def("ms_to_doom_tics", MsToDoomTics);
@@ -305,7 +334,9 @@ bp::register_exception_translator< n >(&translate ## n );
         .def("init", &DoomGamePython::init)
         .def("load_config", &DoomGamePython::loadConfig)
         .def("close", &DoomGamePython::close)
-        .def("new_episode", &DoomGamePython::newEpisode)
+        .def("new_episode", newEpisode1)
+        .def("new_episode", newEpisode2)
+        .def("replay_episode", &DoomGamePython::replayEpisode)
         .def("is_episode_finished", &DoomGamePython::isEpisodeFinished)
         .def("is_new_episode", &DoomGamePython::isNewEpisode)
         .def("is_player_dead", &DoomGamePython::isPlayerDead)
@@ -316,23 +347,23 @@ bp::register_exception_translator< n >(&translate ## n );
         .def("advance_action", advanceAction1)
         .def("advance_action", advanceAction2)
         .def("advance_action", advanceAction3)
-        
+
         .def("get_state", &DoomGamePython::getState)
-    
+
         .def("get_game_variable", &DoomGamePython::getGameVariable)
         .def("get_game_screen", &DoomGamePython::getGameScreen)
 
         .def("get_living_reward", &DoomGamePython::getLivingReward)
         .def("set_living_reward", &DoomGamePython::setLivingReward)
-        
+
         .def("get_death_penalty", &DoomGamePython::getDeathPenalty)
         .def("set_death_penalty", &DoomGamePython::setDeathPenalty)
-        
+
         .def("get_last_reward", &DoomGamePython::getLastReward)
         .def("get_total_reward", &DoomGamePython::getTotalReward)
-        
+
         .def("get_last_action", &DoomGamePython::getLastAction)
-        
+
         .def("add_available_game_variable", &DoomGamePython::addAvailableGameVariable)
         .def("clear_available_game_variables", &DoomGamePython::clearAvailableGameVariables)
         .def("get_available_game_variables_size", &DoomGamePython::getAvailableGameVariablesSize)
@@ -353,6 +384,9 @@ bp::register_exception_translator< n >(&translate ## n );
         .def("get_mode", &DoomGamePython::getMode)
         .def("set_mode", &DoomGamePython::setMode)
 
+        .def("get_ticrate", &DoomGamePython::getTicrate)
+        .def("set_ticrate", &DoomGamePython::setTicrate)
+
         .def("set_vizdoom_path", &DoomGamePython::setViZDoomPath)
         .def("set_doom_game_path", &DoomGamePython::setDoomGamePath)
         .def("set_doom_scenario_path", &DoomGamePython::setDoomScenarioPath)
@@ -371,7 +405,7 @@ bp::register_exception_translator< n >(&translate ## n );
 
         .def("set_console_enabled",&DoomGamePython::setConsoleEnabled)
         .def("set_sound_enabled",&DoomGamePython::setSoundEnabled)
-        
+
         .def("set_screen_resolution", &DoomGamePython::setScreenResolution)
         .def("set_screen_format", &DoomGamePython::setScreenFormat)
         .def("set_render_hud", &DoomGamePython::setRenderHud)

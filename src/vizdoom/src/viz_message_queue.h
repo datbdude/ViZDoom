@@ -20,19 +20,51 @@
  THE SOFTWARE.
 */
 
-#ifndef __VIZDOOM_SHARED_MEMORY_H__
-#define __VIZDOOM_SHARED_MEMORY_H__
+#ifndef __VIZ_MESSAGE_QUEUE_H__
+#define __VIZ_MESSAGE_QUEUE_H__
 
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/ipc/message_queue.hpp>
 
 namespace bip = boost::interprocess;
 
-extern bip::shared_memory_object vizdoomSM;
+extern bip::message_queue *vizMQSend;
+extern bip::message_queue *vizMQRecv;
 
-#define VIZDOOM_SM_NAME_BASE "ViZDoomSM"
+#define VIZ_MQ_NAME_CTR_BASE "ViZDoomMQCtr"
+#define VIZ_MQ_NAME_DOOM_BASE "ViZDoomMQDoom"
+#define VIZ_MQ_MAX_MSG_NUM 64
+#define VIZ_MQ_MAX_MSG_SIZE sizeof(VIZMessageCommand)
+#define VIZ_MQ_MAX_CMD_LEN 128
 
-void ViZDoom_SMInit(const char * id);
-void ViZDoom_SMClose();
+#define VIZ_MSG_CODE_DOOM_DONE 11
+#define VIZ_MSG_CODE_DOOM_CLOSE 12
+#define VIZ_MSG_CODE_DOOM_ERROR 13
+
+#define VIZ_MSG_CODE_TIC 21
+#define VIZ_MSG_CODE_UPDATE 22
+#define VIZ_MSG_CODE_TIC_AND_UPDATE 23
+#define VIZ_MSG_CODE_COMMAND 24
+#define VIZ_MSG_CODE_CLOSE 25
+#define VIZ_MSG_CODE_ERROR 26
+
+struct VIZMessageSignal{
+    uint8_t code;
+};
+
+struct VIZMessageCommand{
+    uint8_t code;
+    char command[VIZ_MQ_MAX_CMD_LEN];
+};
+
+void VIZ_MQInit(const char * id);
+
+void VIZ_MQSend(uint8_t code);
+void VIZ_MQSend(uint8_t code, const char * command);
+void VIZ_MQRecv(void *msg, size_t &size, unsigned int &priority);
+bool VIZ_MQTryRecv(void *msg, size_t &size, unsigned int &priority);
+
+void VIZ_MQTic();
+
+void VIZ_MQClose();
 
 #endif
